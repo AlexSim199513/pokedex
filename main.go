@@ -31,7 +31,6 @@ func main() {
 			if err := cmd.callback(); err != nil {
 				fmt.Println("Error: ", err)
 			}
-			cmd.callback()
 		} else {
 			fmt.Println("Unknown command")
 		}
@@ -63,7 +62,7 @@ func help() error {
 	fmt.Println("Welcome to the Pokedex!")
 	fmt.Println("Usage:")
 	for _, cmd := range commands {
-		fmt.Printf("%s: $s\n", cmd.name, cmd.description)
+		fmt.Printf("%s: %s\n", cmd.name, cmd.description)
 	}
 	return nil
 }
