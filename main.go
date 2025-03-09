@@ -7,13 +7,18 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"pokedex/internal/pokecache"
 	"strings"
+	"time"
 )
+
+var cache *pokecache.Cache
 
 func main() {
 	initCommands()
 	scanner := bufio.NewScanner(os.Stdin)
 	cfg := &Config{}
+	cache := pokecache.NewCache(5 * time.Minute)
 
 	for {
 		fmt.Print("Pokedex > ")
@@ -166,15 +171,26 @@ type location struct {
 }
 
 func getLocationAreas(url string) (locationResponse, error) {
-
 	var locations locationResponse
 
-	res, err := http.Get(url)
+	// Check if the data is in the cache
+	if cachedData, found := cache.Get(url); found {
+		fmt.Println("Using cached location data")
 
+		// Parse the cached data
+		err := json.Unmarshal(cachedData, &locations)
+		if err != nil {
+			return locations, err
+		}
+		return locations, nil
+	}
+
+	// If not in cache, fetch from API
+	fmt.Println("Fetching fresh location data from API")
+	res, err := http.Get(url)
 	if err != nil {
 		return locations, err
 	}
-
 	defer res.Body.Close()
 
 	if res.StatusCode > 299 {
@@ -186,6 +202,10 @@ func getLocationAreas(url string) (locationResponse, error) {
 		return locations, err
 	}
 
+	// Store the raw response in the cache
+	cache.Add(url, body)
+
+	// Parse the response
 	err = json.Unmarshal(body, &locations)
 	if err != nil {
 		return locations, err
