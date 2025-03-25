@@ -18,7 +18,7 @@ func main() {
 	initCommands()
 	scanner := bufio.NewScanner(os.Stdin)
 	cfg := &Config{}
-	cache := pokecache.NewCache(5 * time.Minute)
+	cache = pokecache.NewCache(5 * time.Minute)
 
 	for {
 		fmt.Print("Pokedex > ")

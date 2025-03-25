@@ -22,7 +22,7 @@ func NewCache(interval time.Duration) *Cache {
 		interval: interval,
 	}
 
-	go cache.reaploop()
+	go cache.reapLoop()
 	return cache
 }
 
@@ -49,7 +49,7 @@ func (c *Cache) Get(key string) ([]byte, bool) {
 	return entry.val, true
 }
 
-func (c *Cache) reaploop() {
+func (c *Cache) reapLoop() {
 	ticker := time.NewTicker(c.interval)
 	defer ticker.Stop()
 
