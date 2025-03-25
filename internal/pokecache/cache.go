@@ -16,7 +16,7 @@ type cacheEntry struct {
 	val       []byte
 }
 
-func newCache(interval time.Duration) *Cache {
+func NewCache(interval time.Duration) *Cache {
 	cache := &Cache{
 		entries:  make(map[string]cacheEntry),
 		interval: interval,
