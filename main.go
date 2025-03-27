@@ -35,8 +35,10 @@ func main() {
 		}
 
 		command := cleanedInput[0]
+		args := cleanedInput[1:]
 
 		if cmd, ok := commands[command]; ok {
+			cfg.Args = args
 			if err := cmd.callback(cfg); err != nil {
 				fmt.Println("Error: ", err)
 			}
@@ -125,6 +127,75 @@ func commandMapB(cfg *Config) error {
 	return nil
 }
 
+func exploreCmd(cfg *Config) error {
+	if len(cfg.Args) != 1 {
+		return fmt.Errorf("you must provide a location area name")
+	}
+
+	areaName := cfg.Args[0]
+	fmt.Printf("Exploring %s...\n", areaName)
+
+	areaData, err := explore(areaName)
+	if err != nil {
+		return err
+	}
+
+	displayPokemonInArea(areaData)
+	return nil
+}
+
+func displayPokemonInArea(areaData explorationResponse) error {
+	fmt.Println("Found Pokemon:")
+
+	for _, encounter := range areaData.PokemonEncounters {
+		fmt.Printf(" - %s\n", encounter.Pokemon.Name)
+	}
+	return nil
+}
+
+func explore(area string) (explorationResponse, error) {
+	url := "https://pokeapi.co/api/v2/location-area/" + area
+	var explore explorationResponse
+
+	if cachedData, found := cache.Get(url); found {
+		fmt.Println("using cached data")
+
+		err := json.Unmarshal(cachedData, &explore)
+		if err != nil {
+			return explore, err
+		}
+		return explore, nil
+	}
+
+	fmt.Println("Fetching API data")
+	res, err := http.Get(url)
+	if err != nil {
+		return explore, err
+	}
+
+	defer res.Body.Close()
+
+	if res.StatusCode > 299 {
+		return explore, fmt.Errorf("Status Code: %d", res.StatusCode)
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return explore, err
+	}
+
+	// Store the raw response in the cache
+	cache.Add(url, body)
+
+	// Parse the response
+	err = json.Unmarshal(body, &explore)
+	if err != nil {
+		return explore, err
+	}
+
+	return explore, nil
+}
+
 func initCommands() {
 	commands = map[string]CliCommand{
 		"exit": {
@@ -150,12 +221,19 @@ func initCommands() {
 			description: "Returns the previous section of locations",
 			callback:    commandMapB,
 		},
+
+		"explore": {
+			name:        "explore",
+			description: "Explores and area and returns list of pokemon found there",
+			callback:    exploreCmd,
+		},
 	}
 }
 
 type Config struct {
 	Next     string
 	Previous string
+	Args     []string
 }
 
 type locationResponse struct {
@@ -163,6 +241,19 @@ type locationResponse struct {
 	Results  []location `json:"results"`
 	Next     string     `json:"next"`
 	Previous *string    `json:"previous"`
+}
+
+type explorationResponse struct {
+	Name              string             `json:"name"`
+	PokemonEncounters []PokemonEncounter `json:"pokemon_encounters"`
+}
+
+type PokemonEncounter struct {
+	Pokemon Pokemon `json:"pokemon"`
+}
+
+type Pokemon struct {
+	Name string `json:"name"`
 }
 
 type location struct {
