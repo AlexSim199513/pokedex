@@ -127,6 +127,7 @@ func commandMapB(cfg *Config) error {
 	return nil
 }
 
+// Function to execute the explore command because all command line function require the same function inputs
 func exploreCmd(cfg *Config) error {
 	if len(cfg.Args) != 1 {
 		return fmt.Errorf("you must provide a location area name")
