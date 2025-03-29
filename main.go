@@ -127,6 +127,20 @@ func commandMapB(cfg *Config) error {
 	return nil
 }
 
+func catchCmd(cfg *Config) error {
+	if len(cfg.Args) != 1 {
+		return fmt.Errorf("You must provide a Pokemon name")
+	}
+
+	pokemonName := cfg.Args[0]
+	fmt.Printf("Throwing a Pokeball at %s...", pokemonName)
+
+}
+
+func catch(name string) error {
+
+}
+
 // Function to execute the explore command because all command line function require the same function inputs
 func exploreCmd(cfg *Config) error {
 	if len(cfg.Args) != 1 {
@@ -227,6 +241,12 @@ func initCommands() {
 			name:        "explore",
 			description: "Explores and area and returns list of pokemon found there",
 			callback:    exploreCmd,
+		},
+
+		"catch": {
+			name:        "catch",
+			description: "Throws a pokeball at a Pokemon to attempt to catch it",
+			callback:    catchCmd,
 		},
 	}
 }
