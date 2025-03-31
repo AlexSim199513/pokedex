@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"pokedex/internal/pokecache"
@@ -16,6 +17,7 @@ var cache *pokecache.Cache
 
 func main() {
 	initCommands()
+	rand.Seed(time.Now().UnixNano())
 	scanner := bufio.NewScanner(os.Stdin)
 	cfg := &Config{}
 	cache = pokecache.NewCache(5 * time.Minute)
@@ -133,12 +135,63 @@ func catchCmd(cfg *Config) error {
 	}
 
 	pokemonName := cfg.Args[0]
-	fmt.Printf("Throwing a Pokeball at %s...", pokemonName)
-
+	fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+	err := catch(pokemonName, cfg.CaughtPokemon)
+	return err
 }
 
-func catch(name string) error {
+func catch(name string, caughtPokemon map[string]Pokemon) error {
+	// Check if map is nil and initialize it if needed
+	if caughtPokemon == nil {
+		caughtPokemon = make(map[string]Pokemon)
+	}
 
+	pokemonInfo, err := getPokemonInfo(name)
+	if err != nil {
+		return fmt.Errorf("Pokemon not found")
+	}
+	baseExperience := pokemonInfo.BaseExperience
+	catchChance := 100 - baseExperience/4
+
+	if catchChance < 10 {
+		catchChance = 10
+	} else if catchChance > 90 {
+		catchChance = 90
+	}
+
+	roll := rand.Intn(100)
+
+	if roll < catchChance {
+		fmt.Printf("%s was caught!\n", pokemonInfo.Name)
+		newPokemon := Pokemon{
+			Name:           pokemonInfo.Name,
+			BaseExperience: pokemonInfo.BaseExperience,
+		}
+		caughtPokemon[pokemonInfo.Name] = newPokemon
+		return nil
+	} else {
+		fmt.Printf("%s escaped!\n", pokemonInfo.Name)
+		return nil
+	}
+}
+
+func getPokemonInfo(name string) (PokemonResponse, error) {
+	resp, err := http.Get("https://pokeapi.co/api/v2/pokemon/" + strings.ToLower(name))
+	if err != nil {
+		return PokemonResponse{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return PokemonResponse{}, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+	}
+
+	var pokemon PokemonResponse
+	if err := json.NewDecoder(resp.Body).Decode(&pokemon); err != nil {
+		return PokemonResponse{}, err
+	}
+
+	return pokemon, nil
 }
 
 // Function to execute the explore command because all command line function require the same function inputs
@@ -252,9 +305,14 @@ func initCommands() {
 }
 
 type Config struct {
-	Next     string
-	Previous string
-	Args     []string
+	Next          string
+	Previous      string
+	Args          []string
+	CaughtPokemon map[string]Pokemon
+}
+
+type Pokedex struct {
+	CaughtPokemon map[string]Pokemon
 }
 
 type locationResponse struct {
@@ -274,7 +332,14 @@ type PokemonEncounter struct {
 }
 
 type Pokemon struct {
-	Name string `json:"name"`
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+}
+
+type PokemonResponse struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+	// Add other fields you might need
 }
 
 type location struct {
